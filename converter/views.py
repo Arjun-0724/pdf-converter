@@ -1,3 +1,12 @@
 from django.shortcuts import render
+from .forms import WordUploadForm
 
-# Create your views here.
+def home(request):
+
+    form = WordUploadForm()
+
+    return render(
+        request,
+        "converter/home.html",
+        {"form": form}
+    )
