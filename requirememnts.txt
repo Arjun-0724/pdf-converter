@@ -1,0 +1,8 @@
+asgiref==3.11.1
+colorama==0.4.6
+Django==6.0.6
+docx2pdf==0.1.8
+pywin32==312
+sqlparse==0.5.5
+tqdm==4.68.2
+tzdata==2026.2
