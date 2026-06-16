@@ -1,5 +1,5 @@
 from django.shortcuts import render
-from django.http import FileResponse
+from django.http import FileResponse,JsonResponse
 from django.conf import settings
 from .models import *
 
@@ -13,7 +13,8 @@ import threading
 import time
 
 from .converters.registry import (
-    get_converter
+    get_converter,
+    get_target_formats
 )
 
 def home(request):
@@ -140,3 +141,18 @@ def cleanup_files(*paths):
         delete_file(path)
         print(f"Deleted: {path}", flush=True)
     
+def get_formats(request):
+    source = request.GET.get(
+        "source",
+        ""
+    ).lower()
+
+    formats = get_target_formats(
+        source
+    )
+
+    return JsonResponse(
+        {
+            "formats": formats
+        }
+    )

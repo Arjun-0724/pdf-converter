@@ -1,50 +1,186 @@
-document.addEventListener("DOMContentLoaded", function () {
-  const dropZone = document.getElementById("drop-zone");
-  const fileInput = document.getElementById("file-input");
-  const fileName = document.getElementById("file-name");
+const dropArea =
+    document.getElementById("drop-area");
 
-  // Open file picker on click
-  dropZone.addEventListener("click", function () {
-    fileInput.click();
-  });
+const fileInput =
+    document.getElementById("file-input");
 
-  // Highlight while dragging
-  dropZone.addEventListener("dragover", function (e) {
-    e.preventDefault();
-    dropZone.classList.add("dragover");
-  });
+const fileName =
+    document.getElementById("file-name");
 
-  // Remove highlight
-  dropZone.addEventListener("dragleave", function () {
-    dropZone.classList.remove("dragover");
-  });
+const fileBadge =
+    document.getElementById("file-badge");
 
-  // Handle file drop
-  dropZone.addEventListener("drop", function (e) {
-    e.preventDefault();
+const sourceSelect =
+    document.getElementById("source-format");
 
-    dropZone.classList.remove("dragover");
+const targetSelect =
+    document.getElementById("target-format");
 
-    const files = e.dataTransfer.files;
+const conversionSection =
+    document.getElementById(
+        "conversion-section"
+    );
 
-    if (files.length > 0) {
-      fileName.textContent = files[0].name;
+/* Click Upload */
 
-      // Put dropped file into input
-      const dataTransfer = new DataTransfer();
+dropArea.addEventListener(
+    "click",
+    () => fileInput.click()
+);
 
-      for (let i = 0; i < files.length; i++) {
-        dataTransfer.items.add(files[i]);
-      }
+/* Drag Events */
 
-      fileInput.files = dataTransfer.files;
+dropArea.addEventListener(
+    "dragover",
+    (e) => {
+        e.preventDefault();
+        dropArea.classList.add(
+            "dragover"
+        );
     }
-  });
+);
 
-  // Handle browse selection
-  fileInput.addEventListener("change", function () {
-    if (fileInput.files.length > 0) {
-      fileName.textContent = fileInput.files[0].name;
+dropArea.addEventListener(
+    "dragleave",
+    () => {
+        dropArea.classList.remove(
+            "dragover"
+        );
     }
-  });
-});
+);
+
+dropArea.addEventListener(
+    "drop",
+    (e) => {
+        e.preventDefault();
+
+        dropArea.classList.remove(
+            "dragover"
+        );
+
+        const files =
+            e.dataTransfer.files;
+
+        if (files.length) {
+            fileInput.files = files;
+
+            fileInput.dispatchEvent(
+                new Event("change")
+            );
+        }
+    }
+);
+
+/* File Selected */
+
+fileInput.addEventListener(
+    "change",
+    function () {
+
+        const file =
+            fileInput.files[0];
+
+        if (!file) {
+
+            fileName.textContent =
+                "No file selected";
+
+            fileBadge.style.display =
+                "none";
+
+            conversionSection.style.display =
+                "none";
+
+            return;
+        }
+
+        fileName.textContent =
+            file.name;
+
+        const extension =
+            file.name
+                .split(".")
+                .pop()
+                .toLowerCase();
+
+        fileBadge.style.display =
+            "inline-block";
+
+        fileBadge.textContent =
+            `Detected: ${extension.toUpperCase()}`;
+
+        sourceSelect.innerHTML =
+            `<option>
+                ${extension.toUpperCase()}
+             </option>`;
+
+        fetch(
+            `/formats/?source=${extension}`
+        )
+            .then(
+                response =>
+                    response.json()
+            )
+            .then(
+                data => {
+
+                    targetSelect.innerHTML =
+                        "";
+
+                    if (
+                        data.formats.length === 0
+                    ) {
+
+                        targetSelect.innerHTML =
+                            `
+                            <option>
+                                No conversions available
+                            </option>
+                            `;
+
+                        conversionSection.style.display =
+                            "block";
+
+                        return;
+                    }
+
+                    data.formats.forEach(
+                        format => {
+
+                            const option =
+                                document.createElement(
+                                    "option"
+                                );
+
+                            option.value =
+                                format;
+
+                            option.textContent =
+                                format.toUpperCase();
+
+                            targetSelect.appendChild(
+                                option
+                            );
+                        }
+                    );
+
+                    conversionSection.style.display =
+                        "block";
+                }
+            )
+            .catch(
+                () => {
+
+                    targetSelect.innerHTML =
+                        `
+                        <option>
+                            Error loading formats
+                        </option>
+                        `;
+
+                    conversionSection.style.display =
+                        "block";
+                }
+            );
+    }
+);

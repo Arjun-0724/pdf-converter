@@ -3,4 +3,9 @@ from . import views
 
 urlpatterns = [
     path('', views.home, name='home'),
+    
+    path( "formats/",
+        views.get_formats,
+        name="formats",
+    ),
 ]

@@ -9,12 +9,33 @@ from .image_converter import (
     JpgToPngConverter,
     PngToJpgConverter,
 )
+from .rtf_converter import (
+    RtfToDocxConverter,
+    RtfToPdfConverter,
+)
+from .pdf_converter import (
+    PdfToDocxConverter,
+    # PdfToRtfConverter,
+)
+from .spreadsheet_converter import (
+    CsvToXlsxConverter,
+    XlsxToCsvConverter,
+    XlsxToPdfConverter,
+)
+
 
 CONVERTERS = [
     DocxToPdfConverter(),
     TextToPdfConverter(),
     JpgToPngConverter(),
     PngToJpgConverter(),
+    RtfToDocxConverter(),
+    RtfToPdfConverter(),
+    PdfToDocxConverter(),
+    # PdfToRtfConverter(),
+    CsvToXlsxConverter(),
+    XlsxToCsvConverter(),
+    XlsxToPdfConverter(),
 ]
 
 
@@ -53,3 +74,19 @@ def get_target_formats(
     return sorted(
         list(set(formats))
     )
+    
+from .rtf_converter import (
+    RtfToDocxConverter,
+    RtfToPdfConverter,
+)
+
+from .pdf_converter import (
+    PdfToDocxConverter,
+    # PdfToRtfConverter,
+)
+
+from .spreadsheet_converter import (
+    CsvToXlsxConverter,
+    XlsxToCsvConverter,
+    XlsxToPdfConverter
+)    

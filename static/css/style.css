@@ -1,40 +1,63 @@
 body {
-    background-color: #f4f6f9;
+    background: #f5f7fb;
+    min-height: 100vh;
 }
 
 .converter-card {
-    border-radius: 20px;
+    border: none;
+    border-radius: 25px;
 }
 
-.drop-zone {
-    border: 2px dashed #0d6efd;
+.drop-area {
+    border: 3px dashed #cfd4da;
     border-radius: 20px;
     padding: 60px 30px;
-    background: white;
     text-align: center;
     cursor: pointer;
     transition: all 0.3s ease;
+    background: #fafafa;
 }
 
-.drop-zone:hover {
-    background: #f8f9fa;
+.drop-area:hover {
+    border-color: #0d6efd;
+    background: #f0f7ff;
 }
 
-.drop-zone.dragover {
-    background: #e9f2ff;
-    border-color: #084298;
+.drop-area.dragover {
+    border-color: #0d6efd;
+    background: #eaf3ff;
     transform: scale(1.02);
 }
 
+.upload-icon {
+    font-size: 3rem;
+    margin-bottom: 15px;
+}
+
 #file-name {
-    font-size: 1rem;
+    word-break: break-word;
+}
+
+#conversion-section {
+    animation: fadeIn 0.3s ease;
 }
 
 .table {
     background: white;
-    border-radius: 15px;
 }
 
 .badge {
-    font-size: 0.9rem;
+    font-size: 0.85rem;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(12px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
 }

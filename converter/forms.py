@@ -4,7 +4,12 @@ from django import forms
 OUTPUT_CHOICES = [
     ("pdf", "PDF"),
     ("png", "PNG"),
-    ("jpg", "JPG")
+    ("jpg", "JPG"),
+    ("docx", "DOCX"),
+    ("rtf", "RTF"),
+    ("xlsx", "XLSX"),
+    ("csv", "CSV"),
+    
 ]
 
 
