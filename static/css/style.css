@@ -29,3 +29,12 @@ body {
 #file-name {
     font-size: 1rem;
 }
+
+.table {
+    background: white;
+    border-radius: 15px;
+}
+
+.badge {
+    font-size: 0.9rem;
+}

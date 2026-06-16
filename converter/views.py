@@ -1,6 +1,7 @@
 from django.shortcuts import render
 from django.http import FileResponse
 from django.conf import settings
+from .models import *
 
 from .forms import WordUploadForm
 
@@ -12,6 +13,10 @@ import threading
 import time
 
 def home(request):
+    recent_conversions = (
+        Conversion.objects
+        .order_by("-created_at")[:5]
+    )
 
     if request.method == "POST":
         form = WordUploadForm(
@@ -56,7 +61,13 @@ def home(request):
             pythoncom.CoInitialize()
 
             convert(docx_path, pdf_path)
-            
+            Conversion.objects.create(
+                original_name=uploaded_file.name,
+                stored_name=pdf_name,
+                source_format="DOCX",
+                target_format="PDF",
+                status="Success"
+            )
             threading.Thread(
                 target=cleanup_files,
                 args=(docx_path, pdf_path),
@@ -77,7 +88,8 @@ def home(request):
         request,
         "converter/home.html",
         {
-            "form": form
+            "form": form,
+            "recent_conversions": recent_conversions
         }
     )
     
