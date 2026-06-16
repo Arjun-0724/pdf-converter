@@ -12,6 +12,10 @@ from .services.file_service import *
 import threading
 import time
 
+from .converters.registry import (
+    get_converter
+)
+
 def home(request):
     recent_conversions = (
         Conversion.objects
@@ -27,6 +31,35 @@ def home(request):
         if form.is_valid():
 
             uploaded_file = form.cleaned_data["document"]
+            source_format = (
+                uploaded_file.name
+                .split(".")[-1]
+                .lower()
+            )
+            target_format = form.cleaned_data[
+                "target_format"
+            ]
+            converter = get_converter(
+                source_format,
+                target_format
+            )
+            if not converter:
+                form.add_error(
+                    None,
+                    f"{source_format.upper()} → "
+                    f"{target_format.upper()} "
+                    f"is not supported."
+                )
+
+                return render(
+                    request,
+                    "converter/home.html",
+                    {
+                        "form": form,
+                        "recent_conversions":
+                            recent_conversions,
+                    }
+                )
             unique_name = generate_unique_name(uploaded_file.name)
 
             upload_dir = os.path.join(
@@ -45,40 +78,44 @@ def home(request):
                 for chunk in uploaded_file.chunks():
                     destination.write(chunk)
 
-            pdf_name = (
+            output_name = (
                 os.path.splitext(unique_name)[0]
-                    + ".pdf"
-                )
+                + f".{target_format}"
+            )
             
             converted_dir = get_converted_directory()
             
 
-            pdf_path = os.path.join(
-                upload_dir,
-                pdf_name
+            output_path = os.path.join(
+                converted_dir,
+                output_name
             )
 
             pythoncom.CoInitialize()
 
-            convert(docx_path, pdf_path)
+            converter.convert(
+                docx_path,
+                output_path
+            )
+            
             Conversion.objects.create(
                 original_name=uploaded_file.name,
-                stored_name=pdf_name,
-                source_format="DOCX",
-                target_format="PDF",
+                stored_name=output_name,
+                source_format=source_format.upper(),
+                target_format=target_format.upper(),
                 status="Success"
             )
             threading.Thread(
                 target=cleanup_files,
-                args=(docx_path, pdf_path),
+                args=(docx_path, output_path),
                 daemon=True
             ).start()
             
 
             return FileResponse(
-                open(pdf_path, "rb"),
+                open(output_path, "rb"),
                 as_attachment=True,
-                filename=pdf_name
+                filename=output_name
             )
 
     else:

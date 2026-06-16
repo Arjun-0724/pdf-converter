@@ -1,29 +1,26 @@
 from django import forms
-from .services.file_service import *
+
+
+OUTPUT_CHOICES = [
+    ("pdf", "PDF"),
+    ("png", "PNG"),
+    ("jpg", "JPG")
+]
+
 
 class WordUploadForm(forms.Form):
     document = forms.FileField()
 
-    def clean_document(self):
-        file = self.cleaned_data["document"]
+    target_format = forms.ChoiceField(
+        choices=OUTPUT_CHOICES
+    )
 
-        allowed_extensions = [
-            ".docx"
-        ]
+def clean_document(self):
+    file = self.cleaned_data["document"]
 
-        extension = (
-            "." +
-            file.name.split(".")[-1].lower()
+    if file.size > 20 * 1024 * 1024:
+        raise forms.ValidationError(
+            "File size cannot exceed 20 MB."
         )
 
-        if extension not in allowed_extensions:
-            raise forms.ValidationError(
-                "Only DOCX files are allowed."
-            )
-
-        if file.size > 20 * 1024 * 1024:
-            raise forms.ValidationError(
-                "File size cannot exceed 20 MB."
-            )
-
-        return file
+    return file
