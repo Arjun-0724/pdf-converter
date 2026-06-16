@@ -1,0 +1,24 @@
+# Virtual environments
+env/
+venv/
+.venv/
+
+# Python
+__pycache__/
+*.py[cod]
+
+# Django database
+db.sqlite3
+
+# Generated media files
+media/uploads/
+media/converted/
+media/temp/
+
+# IDE
+.vscode/
+.idea/
+
+# OS files
+Thumbs.db
+.DS_Store
