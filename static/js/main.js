@@ -21,166 +21,224 @@ const conversionSection =
         "conversion-section"
     );
 
-/* Click Upload */
+const convertForm =
+    document.getElementById(
+        "convert-form"
+    );
 
-dropArea.addEventListener(
-    "click",
-    () => fileInput.click()
-);
+const statusMessage =
+    document.getElementById(
+        "status-message"
+    );
 
-/* Drag Events */
 
-dropArea.addEventListener(
-    "dragover",
-    (e) => {
-        e.preventDefault();
-        dropArea.classList.add(
-            "dragover"
-        );
-    }
-);
+/* --------------------------
+   Click Upload
+--------------------------- */
 
-dropArea.addEventListener(
-    "dragleave",
-    () => {
-        dropArea.classList.remove(
-            "dragover"
-        );
-    }
-);
+if (dropArea && fileInput) {
+    dropArea.addEventListener(
+        "click",
+        () => fileInput.click()
+    );
+}
 
-dropArea.addEventListener(
-    "drop",
-    (e) => {
-        e.preventDefault();
 
-        dropArea.classList.remove(
-            "dragover"
-        );
+/* --------------------------
+   Drag & Drop
+--------------------------- */
 
-        const files =
-            e.dataTransfer.files;
+if (dropArea && fileInput) {
 
-        if (files.length) {
-            fileInput.files = files;
-
-            fileInput.dispatchEvent(
-                new Event("change")
+    dropArea.addEventListener(
+        "dragover",
+        (e) => {
+            e.preventDefault();
+            dropArea.classList.add(
+                "dragover"
             );
         }
-    }
-);
+    );
 
-/* File Selected */
+    dropArea.addEventListener(
+        "dragleave",
+        () => {
+            dropArea.classList.remove(
+                "dragover"
+            );
+        }
+    );
 
-fileInput.addEventListener(
-    "change",
-    function () {
+    dropArea.addEventListener(
+        "drop",
+        (e) => {
+            e.preventDefault();
 
-        const file =
-            fileInput.files[0];
+            dropArea.classList.remove(
+                "dragover"
+            );
 
-        if (!file) {
+            const files =
+                e.dataTransfer.files;
+
+            if (files.length) {
+                fileInput.files = files;
+
+                fileInput.dispatchEvent(
+                    new Event("change")
+                );
+            }
+        }
+    );
+}
+
+
+/* --------------------------
+   File Selected
+--------------------------- */
+
+if (fileInput) {
+
+    fileInput.addEventListener(
+        "change",
+        function () {
+
+            const file =
+                fileInput.files[0];
+
+            if (!file) {
+
+                fileName.textContent =
+                    "No file selected";
+
+                fileBadge.style.display =
+                    "none";
+
+                conversionSection.style.display =
+                    "none";
+
+                return;
+            }
 
             fileName.textContent =
-                "No file selected";
+                file.name;
+
+            const extension =
+                file.name
+                    .split(".")
+                    .pop()
+                    .toLowerCase();
 
             fileBadge.style.display =
-                "none";
+                "inline-block";
 
-            conversionSection.style.display =
-                "none";
+            fileBadge.textContent =
+                `Detected: ${extension.toUpperCase()}`;
 
-            return;
-        }
+            sourceSelect.innerHTML =
+                `<option>
+                    ${extension.toUpperCase()}
+                 </option>`;
 
-        fileName.textContent =
-            file.name;
-
-        const extension =
-            file.name
-                .split(".")
-                .pop()
-                .toLowerCase();
-
-        fileBadge.style.display =
-            "inline-block";
-
-        fileBadge.textContent =
-            `Detected: ${extension.toUpperCase()}`;
-
-        sourceSelect.innerHTML =
-            `<option>
-                ${extension.toUpperCase()}
-             </option>`;
-
-        fetch(
-            `/formats/?source=${extension}`
-        )
-            .then(
-                response =>
-                    response.json()
+            fetch(
+                `/formats/?source=${extension}`
             )
-            .then(
-                data => {
+                .then(
+                    response =>
+                        response.json()
+                )
+                .then(
+                    data => {
 
-                    targetSelect.innerHTML =
-                        "";
+                        targetSelect.innerHTML =
+                            "";
 
-                    if (
-                        data.formats.length === 0
-                    ) {
+                        if (
+                            data.formats.length === 0
+                        ) {
+
+                            targetSelect.innerHTML =
+                                `
+                                <option>
+                                    No conversions available
+                                </option>
+                                `;
+
+                            conversionSection.style.display =
+                                "block";
+
+                            return;
+                        }
+
+                        data.formats.forEach(
+                            format => {
+
+                                const option =
+                                    document.createElement(
+                                        "option"
+                                    );
+
+                                option.value =
+                                    format;
+
+                                option.textContent =
+                                    format.toUpperCase();
+
+                                targetSelect.appendChild(
+                                    option
+                                );
+                            }
+                        );
+
+                        conversionSection.style.display =
+                            "block";
+                    }
+                )
+                .catch(
+                    () => {
 
                         targetSelect.innerHTML =
                             `
                             <option>
-                                No conversions available
+                                Error loading formats
                             </option>
                             `;
 
                         conversionSection.style.display =
                             "block";
-
-                        return;
                     }
+                );
+        }
+    );
+}
 
-                    data.formats.forEach(
-                        format => {
 
-                            const option =
-                                document.createElement(
-                                    "option"
-                                );
+/* --------------------------
+   Conversion Status
+--------------------------- */
 
-                            option.value =
-                                format;
+if (
+    convertForm &&
+    statusMessage
+) {
+    convertForm.addEventListener(
+        "submit",
+        function () {
 
-                            option.textContent =
-                                format.toUpperCase();
-
-                            targetSelect.appendChild(
-                                option
-                            );
-                        }
-                    );
-
-                    conversionSection.style.display =
-                        "block";
-                }
-            )
-            .catch(
-                () => {
-
-                    targetSelect.innerHTML =
-                        `
-                        <option>
-                            Error loading formats
-                        </option>
-                        `;
-
-                    conversionSection.style.display =
-                        "block";
-                }
+            statusMessage.classList.remove(
+                "d-none"
             );
-    }
-);
+
+            statusMessage.classList.remove(
+                "alert-success"
+            );
+
+            statusMessage.classList.add(
+                "alert-info"
+            );
+
+            statusMessage.innerHTML =
+                "⏳ Converting file...";
+        }
+    );
+}

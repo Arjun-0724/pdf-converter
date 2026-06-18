@@ -27,6 +27,12 @@ DEBUG = True
 
 ALLOWED_HOSTS = []
 
+MAX_UPLOAD_SIZE = 20 * 1024 * 1024  # 20 MB
+
+# email settings
+EMAIL_BACKEND = (
+    'django.core.mail.backends.smtp.EmailBackend'
+)
 
 # Application definition
 
@@ -38,6 +44,7 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'converter',
+    'accounts',
 ]
 
 MIDDLEWARE = [

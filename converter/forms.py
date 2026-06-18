@@ -1,4 +1,5 @@
 from django import forms
+from django.conf import settings
 
 
 OUTPUT_CHOICES = [
@@ -20,12 +21,12 @@ class WordUploadForm(forms.Form):
         choices=OUTPUT_CHOICES
     )
 
-def clean_document(self):
-    file = self.cleaned_data["document"]
+    def clean_document(self):
+        file = self.cleaned_data["document"]
 
-    if file.size > 20 * 1024 * 1024:
-        raise forms.ValidationError(
-            "File size cannot exceed 20 MB."
-        )
+        if file.size > settings.MAX_UPLOAD_SIZE:
+            raise forms.ValidationError(
+                "File size cannot exceed 20 MB."
+            )
 
-    return file
+        return file

@@ -37,5 +37,8 @@ def get_converted_directory():
 
 
 def delete_file(path):
-    if os.path.exists(path):
-        os.remove(path)
+    try:
+        if path and os.path.exists(path):
+            os.remove(path)
+    except Exception:
+        pass

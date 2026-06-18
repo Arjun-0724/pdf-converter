@@ -1,49 +1,80 @@
-from django.shortcuts import render
-from django.http import FileResponse,JsonResponse
+from django.shortcuts import render,redirect
+from django.http import FileResponse, JsonResponse
 from django.conf import settings
-from .models import *
+from django.contrib import messages
+from django.contrib.auth.decorators import login_required
+from django.contrib.auth.models import User
+from django.http import HttpResponseForbidden
 
+import os
+import time
+import pythoncom
+
+from .models import ConversionCounter
 from .forms import WordUploadForm
 
-from docx2pdf import convert
-import pythoncom
-import os
-from .services.file_service import *
-import threading
-import time
+from .services.file_service import (
+    generate_unique_name,
+    get_converted_directory,
+    delete_file,
+)
+
+from .services.guest_limit import (
+    can_convert,
+    increment_conversion,
+)
 
 from .converters.registry import (
     get_converter,
-    get_target_formats
+    get_target_formats,
 )
 
+
+
+
 def home(request):
-    recent_conversions = (
-        Conversion.objects
-        .order_by("-created_at")[:5]
-    )
+    allowed, remaining = can_convert(request)
 
     if request.method == "POST":
+
+        if not allowed:
+            return render(
+                request,
+                "converter/home.html",
+                {
+                    "form": WordUploadForm(),
+                    "remaining": remaining,
+                    "guest_limit_reached": True,
+                    "has_download": False,
+                },
+            )
+
         form = WordUploadForm(
             request.POST,
-            request.FILES
+            request.FILES,
         )
 
         if form.is_valid():
 
-            uploaded_file = form.cleaned_data["document"]
+            uploaded_file = form.cleaned_data[
+                "document"
+            ]
+
             source_format = (
                 uploaded_file.name
                 .split(".")[-1]
                 .lower()
             )
+
             target_format = form.cleaned_data[
                 "target_format"
             ]
+
             converter = get_converter(
                 source_format,
-                target_format
+                target_format,
             )
+
             if not converter:
                 form.add_error(
                     None,
@@ -57,94 +88,149 @@ def home(request):
                     "converter/home.html",
                     {
                         "form": form,
-                        "recent_conversions":
-                            recent_conversions,
-                    }
+                        "remaining": remaining,
+                        "guest_limit_reached": False,
+                        "has_download": False,
+                    },
                 )
-            unique_name = generate_unique_name(uploaded_file.name)
 
-            upload_dir = os.path.join(
-                settings.MEDIA_ROOT,
-                "uploads"
-            )
+            try:
+                upload_dir = os.path.join(
+                    settings.MEDIA_ROOT,
+                    "uploads",
+                )
 
-            os.makedirs(upload_dir, exist_ok=True)
+                converted_dir = (
+                    get_converted_directory()
+                )
 
-            docx_path = os.path.join(
-                upload_dir,
-                unique_name
-            )
+                os.makedirs(
+                    upload_dir,
+                    exist_ok=True,
+                )
 
-            with open(docx_path, "wb+") as destination:
-                for chunk in uploaded_file.chunks():
-                    destination.write(chunk)
+                os.makedirs(
+                    converted_dir,
+                    exist_ok=True,
+                )
 
-            output_name = (
-                os.path.splitext(unique_name)[0]
-                + f".{target_format}"
-            )
-            
-            converted_dir = get_converted_directory()
-            
+                unique_name = (
+                    generate_unique_name(
+                        uploaded_file.name
+                    )
+                )
 
-            output_path = os.path.join(
-                converted_dir,
-                output_name
-            )
+                input_path = os.path.join(
+                    upload_dir,
+                    unique_name,
+                )
 
-            pythoncom.CoInitialize()
+                with open(
+                    input_path,
+                    "wb+",
+                ) as destination:
+                    for chunk in (
+                        uploaded_file.chunks()
+                    ):
+                        destination.write(
+                            chunk
+                        )
 
-            converter.convert(
-                docx_path,
-                output_path
-            )
-            
-            Conversion.objects.create(
-                original_name=uploaded_file.name,
-                stored_name=output_name,
-                source_format=source_format.upper(),
-                target_format=target_format.upper(),
-                status="Success"
-            )
-            threading.Thread(
-                target=cleanup_files,
-                args=(docx_path, output_path),
-                daemon=True
-            ).start()
-            
+                output_name = (
+                    os.path.splitext(
+                        unique_name
+                    )[0]
+                    + f".{target_format}"
+                )
 
-            return FileResponse(
-                open(output_path, "rb"),
-                as_attachment=True,
-                filename=output_name
-            )
+                output_path = os.path.join(
+                    converted_dir,
+                    output_name,
+                )
+
+                pythoncom.CoInitialize()
+
+                converter.convert(
+                    input_path,
+                    output_path,
+                )
+
+                ConversionCounter.objects.create()
+
+                if (
+                    not request.user
+                    .is_authenticated
+                ):
+                    increment_conversion(
+                        request
+                    )
+
+                request.session[
+                    "download_path"
+                ] = output_path
+
+                request.session[
+                    "download_name"
+                ] = output_name
+
+                messages.success(
+                    request,
+                    "Your file has been converted successfully."
+                )
+
+                return redirect(
+                    "home"
+                )
+
+            except Exception as e:
+                form.add_error(
+                    None,
+                    f"Conversion failed: {e}"
+                )
 
     else:
         form = WordUploadForm()
 
+    context = {
+        "form": form,
+        "remaining": remaining,
+        "guest_limit_reached": (
+            not allowed
+        ),
+        "has_download": bool(
+            request.session.get(
+                "download_path"
+            )
+        ),
+    }
+
     return render(
         request,
         "converter/home.html",
-        {
-            "form": form,
-            "recent_conversions": recent_conversions
-        }
+        context,
     )
     
-
+    
+    
 def cleanup_files(*paths):
-    print("Cleanup thread started", flush=True)
+    print(
+        "Cleanup thread started",
+        flush=True,
+    )
 
     time.sleep(10)
 
     for path in paths:
         delete_file(path)
-        print(f"Deleted: {path}", flush=True)
-    
+        print(
+            f"Deleted: {path}",
+            flush=True,
+        )
+        
 def get_formats(request):
     source = request.GET.get(
         "source",
-        ""
+        "",
     ).lower()
 
     formats = get_target_formats(
@@ -153,6 +239,92 @@ def get_formats(request):
 
     return JsonResponse(
         {
-            "formats": formats
+            "formats": formats,
         }
+    )        
+    
+    
+@login_required
+def admin_dashboard(request):
+
+    if (
+        not request.user.is_authenticated
+        or not request.user.is_superuser
+    ):
+        return render(
+            request,
+            "403.html",
+            status=403,
+        )
+
+    total_users = User.objects.count()
+    total_conversions = (
+        ConversionCounter.objects.count()
     )
+
+    context = {
+        "total_users": total_users,
+        "total_conversions": total_conversions,
+        "status": "Online",
+        "version": "v1.0",
+        "privacy_mode": "Enabled",
+    }
+
+    return render(
+        request,
+        "converter/admin_dashboard.html",
+        context,
+    )
+    
+
+def download_file(request):
+    download_path = request.session.get(
+        "download_path"
+    )
+
+    download_name = request.session.get(
+        "download_name"
+    )
+
+    input_path = request.session.get(
+        "input_path"
+    )
+
+    if not download_path:
+        return redirect("home")
+
+    response = FileResponse(
+        open(download_path, "rb"),
+        as_attachment=True,
+        filename=download_name,
+    )
+
+    request.session.pop(
+        "download_path",
+        None,
+    )
+
+    request.session.pop(
+        "download_name",
+        None,
+    )
+
+    request.session.pop(
+        "input_path",
+        None,
+    )
+
+    original_close = response.close
+
+    def cleanup():
+        original_close()
+
+        delete_file(download_path)
+        delete_file(input_path)
+
+    response.close = cleanup
+
+    return response
+
+
+
