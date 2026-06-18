@@ -1,0 +1,12 @@
+Hi {{ user.username }},
+
+Welcome to Universal File Converter.
+
+Please verify your email by clicking the link below:
+
+{{ verification_link }}
+
+If you did not create this account, you can safely ignore this email.
+
+Thank you,
+Universal File Converter Team
