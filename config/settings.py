@@ -31,8 +31,10 @@ MAX_UPLOAD_SIZE = 20 * 1024 * 1024  # 20 MB
 
 # email settings
 EMAIL_BACKEND = (
-    'django.core.mail.backends.smtp.EmailBackend'
+    "django.core.mail.backends.filebased.EmailBackend"
 )
+
+EMAIL_FILE_PATH = BASE_DIR / "sent_emails"
 
 # Application definition
 

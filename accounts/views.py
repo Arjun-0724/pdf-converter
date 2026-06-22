@@ -14,12 +14,159 @@ from django.core.mail import send_mail
 
 from .tokens import email_verification_token
 
+from django.shortcuts import render
+from django.contrib.auth.models import User
+from django.utils.http import urlsafe_base64_decode
+from django.utils.encoding import force_str
+
+from .tokens import email_verification_token
+from .services import send_verification_email
+
+
+def verify_email(request, uidb64, token):
+    try:
+        uid = force_str(
+            urlsafe_base64_decode(uidb64)
+        )
+
+        user = User.objects.get(pk=uid)
+
+
+        token_valid = (
+            email_verification_token.check_token(
+                user,
+                token
+            )
+        )
+
+
+    except Exception as e:
+    
+        user = None
+        token_valid = False
+
+    if user and token_valid:
+        user.is_active = True
+        user.save()
+
+        return render(
+            request,
+            "accounts/email_verified.html"
+        )
+
+    return render(
+        request,
+        "accounts/email_invalid.html"
+    )
+
+def register_view(request):
+    if request.method == "POST":
+        form = RegisterForm(
+            request.POST
+        )
+
+        if form.is_valid():
+
+            user = form.save(
+                commit=False
+            )
+
+            # User cannot login yet
+            user.is_active = False
+            user.save()
+       
+
+            token = email_verification_token.make_token(user)
+       
+
+            # Generate link
+            uid = (
+                urlsafe_base64_encode(
+                    force_bytes(
+                        user.pk
+                    )
+                )
+            )
+
+            token = (
+                email_verification_token
+                .make_token(
+                    user
+                )
+            )
+
+            verification_link = (
+                request.build_absolute_uri(
+                    reverse(
+                        "verify_email",
+                        args=[
+                            uid,
+                            token,
+                        ],
+                    )
+                )
+            )
+            # Email body
+            message = (
+                render_to_string(
+                    "accounts/verify_email.txt",
+                    {
+                        "user": user,
+                        "verification_link":
+                            verification_link,
+                    },
+                )
+            )
+
+            send_mail(
+                subject=(
+                    "Verify your email"
+                ),
+                message=message,
+                from_email=None,
+                recipient_list=[
+                    user.email
+                ],
+            )
+
+            messages.success(
+                request,
+                "Account created. "
+                "Check your terminal "
+                "for the verification link."
+            )
+
+            return redirect(
+                "login"
+            )
+
+    else:
+        form = RegisterForm()
+
+    return render(
+        request,
+        "accounts/register.html",
+        {
+            "form": form
+        },
+    )
+
+
+
 def login_view(request):
     if request.method == "POST":
         form = AuthenticationForm(request, data=request.POST)
 
         if form.is_valid():
             user = form.get_user()
+
+            if not user.is_active:
+                messages.error(
+                    request,
+                    "Please verify your email before logging in."
+                )
+                return redirect("login")
+
             login(request, user)
             messages.success(request, "Logged in successfully.")
             return redirect("home")
@@ -39,57 +186,47 @@ def logout_view(request):
     return redirect("home")
 
 
-def register_view(request):
+def resend_verification_public(request):
     if request.method == "POST":
-        form = RegisterForm(request.POST)
+        email = request.POST.get("email")
 
-        if form.is_valid():
-            user = form.save(commit=False)
+        try:
+            user = User.objects.get(email=email)
 
-            # 🔒 IMPORTANT: user must not be active until verification
-            user.is_active = False
-            user.save()
+            if user.is_active:
+                messages.info(
+                    request,
+                    "Account already verified. Please login."
+                )
+                return redirect("login")
 
-            # UID + token
-            uid = urlsafe_base64_encode(force_bytes(user.pk))
-
-            token = email_verification_token.make_token(user)
-
-            domain = get_current_site(request).domain
-
-            verification_link = (
-                f"http://{domain}"
-                f"{reverse('verify_email', args=[uid, token])}"
-            )
-
-            # Email content (console backend will print this)
-            message = render_to_string(
-                "accounts/verify_email.txt",
-                {
-                    "user": user,
-                    "verification_link": verification_link,
-                },
-            )
-
-            send_mail(
-                subject="Verify your email - PDF Converter",
-                message=message,
-                from_email=None,
-                recipient_list=[user.email],
-            )
+            send_verification_email(user, request)
 
             messages.success(
                 request,
-                "Account created! Please check your email to verify your account."
+                "Verification email sent. Check your inbox."
             )
 
-            return redirect("login")
+        except User.DoesNotExist:
+            messages.error(
+                request,
+                "No account found with this email."
+            )
 
-    else:
-        form = RegisterForm()
+        return redirect("login")
 
-    return render(
-        request,
-        "accounts/register.html",
-        {"form": form},
-    )
+    return render(request, "accounts/resend_email.html")
+
+
+
+def resend_verification_logged_in(request):
+    user = request.user
+
+    if user.is_authenticated and not user.is_active:
+        send_verification_email(user, request)
+        messages.success(
+            request,
+            "Verification email resent successfully."
+        )
+
+    return redirect("login")
