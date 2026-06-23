@@ -35,6 +35,32 @@
         {% endfor %}
       {% endif %}
 
+      {% if show_resend %}
+      <div class="alert alert-warning">
+
+          Your email address has not been verified.
+
+          <br><br>
+
+          <a
+              href="{% url 'resend_verification' %}"
+              class="btn btn-primary btn-sm"
+          >
+              Resend Verification Email
+          </a>
+
+      </div>
+      {% endif %}
+
+      {% if messages %}
+        {% for message in messages %}
+          <div class="alert alert-success">{{ message }}</div>
+        {% endfor %}
+      {% endif %}
+
+      {% if show_resend %}
+    {% endif %}
+
       {% block content %}
 
       {% endblock %}

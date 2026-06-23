@@ -2,7 +2,7 @@ from django.shortcuts import render, redirect
 from django.contrib import messages
 from .forms import RegisterForm
 from django.contrib.auth.forms import AuthenticationForm
-from django.contrib.auth import login, logout
+from django.contrib.auth import login, logout, authenticate
 
 from django.contrib.auth.models import User
 from django.utils.http import urlsafe_base64_encode
@@ -151,33 +151,79 @@ def register_view(request):
         },
     )
 
-
-
 def login_view(request):
     if request.method == "POST":
-        form = AuthenticationForm(request, data=request.POST)
+        form = AuthenticationForm(
+            request,
+            data=request.POST,
+        )
 
+        username = request.POST.get(
+            "username"
+        )
+
+        password = request.POST.get(
+            "password"
+        )
+
+        # Check inactive user first
+        try:
+            user = User.objects.get(
+                username=username
+            )
+
+            if (
+                not user.is_active
+                and
+                user.check_password(
+                    password
+                )
+            ):
+                request.session["unverified_email"] = user.email
+                messages.error(
+                    request,
+                    "Your email is not verified. "                
+                )
+
+                return redirect(
+                    "login"
+                )
+
+        except User.DoesNotExist:
+            pass
+
+        # Normal login
         if form.is_valid():
             user = form.get_user()
 
-            if not user.is_active:
-                messages.error(
-                    request,
-                    "Please verify your email before logging in."
-                )
-                return redirect("login")
+            login(
+                request,
+                user,
+            )
 
-            login(request, user)
-            messages.success(request, "Logged in successfully.")
-            return redirect("home")
+            messages.success(
+                request,
+                "Logged in successfully."
+            )
+
+            return redirect(
+                "home"
+            )
 
     else:
         form = AuthenticationForm()
+        
+        
 
     return render(
         request,
         "accounts/login.html",
-        {"form": form}
+        {
+            "form": form,
+            "show_resend": (
+                "unverified_email" in request.session
+    )
+        },
     )
 
 def logout_view(request):
@@ -191,7 +237,7 @@ def resend_verification_public(request):
         email = request.POST.get("email")
 
         try:
-            user = User.objects.get(email=email)
+            user = User.objects.filter(email=email).first()
 
             if user.is_active:
                 messages.info(
