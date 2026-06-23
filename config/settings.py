@@ -20,12 +20,16 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # See https://docs.djangoproject.com/en/6.0/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-fw=m7slbm$yeh^2yw+hu#)8t22ee)(r!e@zc3q6dx5ql%g6l)&'
+# SECRET_KEY = 'django-insecure-fw=m7slbm$yeh^2yw+hu#)8t22ee)(r!e@zc3q6dx5ql%g6l)&'
+SECRET_KEY = "@w+56z4()!z^k5wqw6&679q^9rqt1mbw_v@&r*!kw#cvuu&f06"
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = False
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = [
+    "127.0.0.1",
+    "localhost",
+]
 
 MAX_UPLOAD_SIZE = 20 * 1024 * 1024  # 20 MB
 
@@ -129,3 +133,16 @@ STATICFILES_DIRS = [BASE_DIR/'static']
 
 MEDIA_URL = '/media/'
 MEDIA_ROOT = BASE_DIR / 'media'
+
+
+
+
+SECURE_SSL_REDIRECT = True
+
+SESSION_COOKIE_SECURE = True
+
+CSRF_COOKIE_SECURE = True
+
+SECURE_HSTS_SECONDS = 31536000
+SECURE_HSTS_INCLUDE_SUBDOMAINS = True
+SECURE_HSTS_PRELOAD = True
